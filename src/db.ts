@@ -60,6 +60,18 @@ export function initDatabase(): void {
       FOREIGN KEY (task_id) REFERENCES scheduled_tasks(id)
     );
     CREATE INDEX IF NOT EXISTS idx_task_run_logs ON task_run_logs(task_id, run_at);
+
+    CREATE TABLE IF NOT EXISTS channel_mappings (
+      platform TEXT NOT NULL,
+      parent_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      channel_name TEXT NOT NULL,
+      jid TEXT NOT NULL,
+      group_folder TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (platform, parent_id, channel_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_channel_jid ON channel_mappings(jid);
   `);
 
   // Add sender_name column if it doesn't exist (migration for existing DBs)
@@ -531,6 +543,75 @@ export function getAllRegisteredGroups(): Record<string, RegisteredGroup> {
     };
   }
   return result;
+}
+
+// --- Channel mapping accessors ---
+
+export interface ChannelMapping {
+  platform: string;
+  parent_id: string;
+  channel_id: string;
+  channel_name: string;
+  jid: string;
+  group_folder: string;
+  created_at: string;
+}
+
+export function storeChannelMapping(mapping: ChannelMapping): void {
+  db.prepare(
+    `INSERT OR REPLACE INTO channel_mappings (platform, parent_id, channel_id, channel_name, jid, group_folder, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    mapping.platform,
+    mapping.parent_id,
+    mapping.channel_id,
+    mapping.channel_name,
+    mapping.jid,
+    mapping.group_folder,
+    mapping.created_at,
+  );
+}
+
+export function getChannelMappings(
+  platform: string,
+  parentId: string,
+): ChannelMapping[] {
+  return db
+    .prepare(
+      'SELECT * FROM channel_mappings WHERE platform = ? AND parent_id = ?',
+    )
+    .all(platform, parentId) as ChannelMapping[];
+}
+
+export function getChannelMappingByJid(jid: string): ChannelMapping | undefined {
+  return db
+    .prepare('SELECT * FROM channel_mappings WHERE jid = ?')
+    .get(jid) as ChannelMapping | undefined;
+}
+
+export function getAllChannelMappings(platform: string): ChannelMapping[] {
+  return db
+    .prepare('SELECT * FROM channel_mappings WHERE platform = ?')
+    .all(platform) as ChannelMapping[];
+}
+
+/**
+ * Store a message from any channel (Telegram, Discord, etc.)
+ * Channel-agnostic version of storeMessage.
+ */
+export function storeChannelMessage(
+  id: string,
+  chatJid: string,
+  sender: string,
+  senderName: string,
+  content: string,
+  timestamp: string,
+  isFromMe: boolean,
+): void {
+  db.prepare(
+    `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(id, chatJid, sender, senderName, content, timestamp, isFromMe ? 1 : 0);
 }
 
 // --- JSON migration ---
