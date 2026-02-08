@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   nanoclaw:
     image: ghcr.io/buzcpg/nanoclaw-host:latest
@@ -15,6 +13,8 @@ services:
     volumes:
       # Docker socket for spawning agent containers
       - /var/run/docker.sock:/var/run/docker.sock
+      # Environment file (needed by container-runner to pass auth to agents)
+      - ./.env:/app/.env:ro
       # Persistent data
       - ./store:/app/store
       - ./data:/app/data

@@ -50,19 +50,8 @@ export const TRIGGER_PATTERN = new RegExp(
 export const TIMEZONE =
   process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-// Telegram configuration
-export const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-export const TELEGRAM_ENABLED = !!TELEGRAM_BOT_TOKEN;
-export const TELEGRAM_FORUM_CHAT_ID = process.env.TELEGRAM_FORUM_CHAT_ID
-  ? Number(process.env.TELEGRAM_FORUM_CHAT_ID)
-  : undefined;
-
-// Telegram user whitelist — ONLY these user IDs can interact with the bot.
-export const TELEGRAM_ALLOWED_USER_IDS: Set<number> = new Set(
-  (process.env.TELEGRAM_ALLOWED_USER_IDS || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .map(Number)
-    .filter((n) => !isNaN(n) && n > 0),
-);
+// Discord configuration
+export const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN || '';
+export const DISCORD_ENABLED = !!DISCORD_BOT_TOKEN;
+export const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID || '';
+export const DISCORD_MAX_MESSAGE_LENGTH = 2000;

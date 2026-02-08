@@ -12,7 +12,7 @@ import {
   POLL_INTERVAL,
   TIMEZONE,
   TRIGGER_PATTERN,
-  TELEGRAM_ENABLED,
+  DISCORD_ENABLED,
 } from './config.js';
 import {
   AgentResponse,
@@ -45,11 +45,11 @@ import { startSchedulerLoop } from './task-scheduler.js';
 import { RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
 import {
-  sendTelegramMessage,
-  setTelegramTyping,
-  startTelegramBot,
-  stopTelegramBot,
-} from './telegram-client.js';
+  sendDiscordMessage,
+  setDiscordTyping,
+  startDiscordBot,
+  stopDiscordBot,
+} from './discord-client.js';
 
 let lastTimestamp = '';
 let sessions: Record<string, string> = {};
@@ -62,8 +62,8 @@ const queue = new GroupQueue();
 
 async function setTyping(jid: string, isTyping: boolean): Promise<void> {
   try {
-    if (jid.startsWith('tg:')) {
-      await setTelegramTyping(jid, isTyping);
+    if (jid.startsWith('dc:')) {
+      await setDiscordTyping(jid, isTyping);
     }
   } catch (err) {
     logger.debug({ jid, err }, 'Failed to update typing status');
@@ -111,7 +111,7 @@ function getAvailableGroups(): AvailableGroup[] {
   const registeredJids = new Set(Object.keys(registeredGroups));
 
   return chats
-    .filter((c) => c.jid !== '__group_sync__' && c.jid.startsWith('tg:'))
+    .filter((c) => c.jid !== '__group_sync__' && c.jid.startsWith('dc:'))
     .map((c) => ({
       jid: c.jid,
       name: c.name,
@@ -245,8 +245,8 @@ async function runAgent(
 
 async function sendMessage(jid: string, text: string): Promise<void> {
   try {
-    if (jid.startsWith('tg:')) {
-      await sendTelegramMessage(jid, text);
+    if (jid.startsWith('dc:')) {
+      await sendDiscordMessage(jid, text);
     } else {
       logger.warn({ jid }, 'Unknown channel for JID');
     }
@@ -601,7 +601,7 @@ async function main(): Promise<void> {
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutdown signal received');
-    await stopTelegramBot();
+    await stopDiscordBot();
     await queue.shutdown(10000);
     process.exit(0);
   };
@@ -622,9 +622,9 @@ async function main(): Promise<void> {
   recoverPendingMessages();
   startMessageLoop();
 
-  // Start Telegram bot
-  if (TELEGRAM_ENABLED) {
-    await startTelegramBot({
+  // Start Discord bot
+  if (DISCORD_ENABLED) {
+    await startDiscordBot({
       onMessage: (chatKey, messageId, sender, senderName, content, timestamp, isFromMe) => {
         if (registeredGroups[chatKey]) {
           storeChannelMessage(messageId, chatKey, sender, senderName, content, timestamp, isFromMe);
@@ -634,9 +634,11 @@ async function main(): Promise<void> {
       onChatMetadata: (chatKey, timestamp, name) => {
         storeChatMetadata(chatKey, timestamp, name);
       },
+    }, {
+      enableSlashCommands: true,
     });
   } else {
-    logger.warn('Telegram not configured (TELEGRAM_BOT_TOKEN missing)');
+    logger.warn('Discord not configured (DISCORD_BOT_TOKEN missing)');
   }
 }
 
