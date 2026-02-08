@@ -146,9 +146,19 @@ function buildVolumeMounts(
     });
 
     if (filteredLines.length > 0) {
+      // Quote values properly to handle special chars like # in OAuth tokens
+      const quotedLines = filteredLines.map((line) => {
+        const eqIdx = line.indexOf('=');
+        if (eqIdx === -1) return line;
+        const name = line.slice(0, eqIdx);
+        const value = line.slice(eqIdx + 1);
+        // Use single quotes and escape any existing single quotes
+        const escaped = value.replace(/'/g, "'\\''");
+        return `${name}='${escaped}'`;
+      });
       fs.writeFileSync(
         path.join(envDir, 'env'),
-        filteredLines.join('\n') + '\n',
+        quotedLines.join('\n') + '\n',
       );
       mounts.push({
         hostPath: path.join(HOST_DATA_DIR, 'env'),
