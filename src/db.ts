@@ -2,8 +2,6 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 
-import { proto } from '@whiskeysockets/baileys';
-
 import { DATA_DIR, STORE_DIR } from './config.js';
 import { NewMessage, RegisteredGroup, ScheduledTask, TaskRunLog } from './types.js';
 
@@ -209,43 +207,6 @@ export function setLastGroupSync(): void {
   db.prepare(
     `INSERT OR REPLACE INTO chats (jid, name, last_message_time) VALUES ('__group_sync__', '__group_sync__', ?)`,
   ).run(now);
-}
-
-/**
- * Store a message with full content.
- * Only call this for registered groups where message history is needed.
- */
-export function storeMessage(
-  msg: proto.IWebMessageInfo,
-  chatJid: string,
-  isFromMe: boolean,
-  pushName?: string,
-): void {
-  if (!msg.key) return;
-
-  const content =
-    msg.message?.conversation ||
-    msg.message?.extendedTextMessage?.text ||
-    msg.message?.imageMessage?.caption ||
-    msg.message?.videoMessage?.caption ||
-    '';
-
-  const timestamp = new Date(Number(msg.messageTimestamp) * 1000).toISOString();
-  const sender = msg.key.participant || msg.key.remoteJid || '';
-  const senderName = pushName || sender.split('@')[0];
-  const msgId = msg.key.id || '';
-
-  db.prepare(
-    `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    msgId,
-    chatJid,
-    sender,
-    senderName,
-    content,
-    timestamp,
-    isFromMe ? 1 : 0,
-  );
 }
 
 export function getNewMessages(
@@ -597,7 +558,6 @@ export function getAllChannelMappings(platform: string): ChannelMapping[] {
 
 /**
  * Store a message from any channel (Telegram, Discord, etc.)
- * Channel-agnostic version of storeMessage.
  */
 export function storeChannelMessage(
   id: string,
