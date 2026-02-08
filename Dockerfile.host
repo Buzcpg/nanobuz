@@ -1,0 +1,45 @@
+# NanoClaw Host Container
+# Runs the WhatsApp router and spawns agent containers via Docker
+
+FROM node:22-slim
+
+# Install Docker CLI (to spawn agent containers)
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
+    gnupg \
+    && install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
+    && chmod a+r /etc/apt/keyrings/docker.asc \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian bookworm stable" > /etc/apt/sources.list.d/docker.list \
+    && apt-get update \
+    && apt-get install -y docker-ce-cli \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app directory
+WORKDIR /app
+
+# Copy package files first for better caching
+COPY package*.json ./
+
+# Install dependencies (including native modules like better-sqlite3)
+RUN npm ci --omit=dev
+
+# Copy built dist and other necessary files
+COPY dist/ ./dist/
+COPY groups/ ./groups/
+
+# Create data directories
+RUN mkdir -p /app/store /app/data /app/groups
+
+# Set ownership to node user
+RUN chown -R node:node /app
+
+# Switch to non-root user
+USER node
+
+# Default environment
+ENV NODE_ENV=production
+
+# Entry point
+CMD ["node", "dist/index.js"]

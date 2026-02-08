@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  nanoclaw:
+    image: ghcr.io/buzcpg/nanoclaw-host:latest
+    container_name: nanoclaw
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - ASSISTANT_NAME=${ASSISTANT_NAME:-Andy}
+      - CONTAINER_IMAGE=ghcr.io/buzcpg/nanoclaw-agent:latest
+    volumes:
+      # Docker socket for spawning agent containers
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Persistent data
+      - ./store:/app/store
+      - ./data:/app/data
+      - ./groups:/app/groups
+      - ./logs:/app/logs
+    working_dir: /app
+    # Run as root to access docker.sock (node user inside can't)
+    user: root
+    healthcheck:
+      test: ["CMD", "node", "-e", "process.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
