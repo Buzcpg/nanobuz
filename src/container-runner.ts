@@ -13,6 +13,9 @@ import {
   CONTAINER_TIMEOUT,
   DATA_DIR,
   GROUPS_DIR,
+  HOST_DATA_DIR,
+  HOST_GROUPS_DIR,
+  HOST_WORKSPACE,
 } from './config.js';
 import { logger } from './logger.js';
 import { validateAdditionalMounts } from './mount-security.js';
@@ -64,27 +67,29 @@ function buildVolumeMounts(
   isMain: boolean,
 ): VolumeMount[] {
   const mounts: VolumeMount[] = [];
-  const homeDir = getHomeDir();
   const projectRoot = process.cwd();
+
+  // For Docker-in-Docker, we use HOST_* paths for mount sources (what Docker sees)
+  // but regular paths for fs operations (what this process sees)
 
   if (isMain) {
     // Main gets the entire project root mounted
     mounts.push({
-      hostPath: projectRoot,
+      hostPath: HOST_WORKSPACE,
       containerPath: '/workspace/project',
       readonly: false,
     });
 
     // Main also gets its group folder as the working directory
     mounts.push({
-      hostPath: path.join(GROUPS_DIR, group.folder),
+      hostPath: path.join(HOST_GROUPS_DIR, group.folder),
       containerPath: '/workspace/group',
       readonly: false,
     });
   } else {
     // Other groups only get their own folder
     mounts.push({
-      hostPath: path.join(GROUPS_DIR, group.folder),
+      hostPath: path.join(HOST_GROUPS_DIR, group.folder),
       containerPath: '/workspace/group',
       readonly: false,
     });
@@ -93,7 +98,7 @@ function buildVolumeMounts(
     const globalDir = path.join(GROUPS_DIR, 'global');
     if (fs.existsSync(globalDir)) {
       mounts.push({
-        hostPath: globalDir,
+        hostPath: path.join(HOST_GROUPS_DIR, 'global'),
         containerPath: '/workspace/global',
         readonly: true,
       });
@@ -110,7 +115,7 @@ function buildVolumeMounts(
   );
   fs.mkdirSync(groupSessionsDir, { recursive: true });
   mounts.push({
-    hostPath: groupSessionsDir,
+    hostPath: path.join(HOST_DATA_DIR, 'sessions', group.folder, '.claude'),
     containerPath: '/home/node/.claude',
     readonly: false,
   });
@@ -121,7 +126,7 @@ function buildVolumeMounts(
   fs.mkdirSync(path.join(groupIpcDir, 'messages'), { recursive: true });
   fs.mkdirSync(path.join(groupIpcDir, 'tasks'), { recursive: true });
   mounts.push({
-    hostPath: groupIpcDir,
+    hostPath: path.join(HOST_DATA_DIR, 'ipc', group.folder),
     containerPath: '/workspace/ipc',
     readonly: false,
   });
@@ -146,7 +151,7 @@ function buildVolumeMounts(
         filteredLines.join('\n') + '\n',
       );
       mounts.push({
-        hostPath: envDir,
+        hostPath: path.join(HOST_DATA_DIR, 'env'),
         containerPath: '/workspace/env-dir',
         readonly: true,
       });
